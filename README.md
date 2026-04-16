@@ -1,6 +1,6 @@
 # 🎭 HeadGame — 猜头顶多人派对游戏
 
-[![Deploy](https://github.com/YOUR_USERNAME/headgame/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/headgame/actions)
+[![Deploy](https://github.com/xzhangfox/headgame/actions/workflows/deploy.yml/badge.svg)](https://github.com/xzhangfox/headgame/actions)
 
 > 2-8人实时多人在线猜头顶游戏。每位玩家头顶有一张只有别人看得到的卡片，通过向他人提问来猜出自己头顶的内容！
 
@@ -55,7 +55,7 @@ headgame/
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/YOUR_USERNAME/headgame.git
+git clone https://github.com/xzhangfox/headgame.git
 cd headgame
 
 # 2. 安装服务端依赖
@@ -79,7 +79,7 @@ cd client && npm run dev
 
 1. **Push 到 GitHub**
    ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/headgame.git
+   git remote add origin https://github.com/xzhangfox/headgame.git
    git push -u origin main
    ```
 
@@ -103,7 +103,7 @@ cd client && npm run dev
 **服务端**（Railway 配置）：
 ```
 PORT=3001
-CLIENT_ORIGIN=https://YOUR_USERNAME.github.io
+CLIENT_ORIGIN=https://xzhangfox.github.io
 ```
 
 **客户端**（GitHub Secret 或 `.env.local`）：
