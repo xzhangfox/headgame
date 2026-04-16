@@ -1,132 +1,129 @@
-# 🎭 HeadGame — 猜头顶多人派对游戏
+# 🎭 HeadGame — Multiplayer Party Guessing Game
 
 [![Deploy](https://github.com/xzhangfox/headgame/actions/workflows/deploy.yml/badge.svg)](https://github.com/xzhangfox/headgame/actions)
 
-> 2-8人实时多人在线猜头顶游戏。每位玩家头顶有一张只有别人看得到的卡片，通过向他人提问来猜出自己头顶的内容！
+> A real-time multiplayer party game for 2–8 players. Each player has a card on their head that everyone else can see but they can't — ask questions, gather clues, and be the first to guess what's on your head!
 
-## 🎮 玩法规则
+## 🎮 How to Play
 
-1. **房主创建房间**，其他人输入房间码加入（最多8人）
-2. **房主选择题库分类**（动物/美食/影视等10类）和显示模式（文字/表情图片）
-3. 游戏开始后，系统随机给每人分配头顶内容，**只有别人看得到你头顶上是什么**
-4. **轮流提问**：到你回合时可以向任意玩家提问（其他玩家回答是/否）
-5. **随时猜测**：任何时候可以猜测自己头顶，猜错扣1条命 -10分
-6. **计分规则**：
-   - 第1个猜对：100分 + 速度奖励
-   - 第2个猜对：85分
-   - 第N个猜对：每晚15分（最低10分）
-   - 猜错：-10分
-7. 所有玩家猜对或淘汰后游戏结束，分数最高者获胜！
+1. **Create or join a room** — the host creates a room and shares the 6-character code with friends
+2. **Configure the game** — choose a category (Animals, Food, Movies, etc.) and display mode (text or emoji)
+3. **Cards are dealt** — each player gets a random item assigned to their head; you can see everyone else's but not your own
+4. **Take turns asking questions** — on your turn, ask any other player a yes/no question to gather clues
+5. **Guess at any time** — submit a guess whenever you're ready; wrong guesses cost a life (−10 pts)
+6. **Scoring**
+   - 1st to guess correctly: **100 pts** + speed bonus
+   - 2nd: **85 pts**, 3rd: **70 pts** — drops by 15 per rank (minimum 10 pts)
+   - Wrong guess: **−10 pts**
+7. The game ends when all players have guessed or run out of lives — highest score wins!
 
-## ✨ 功能特性
+## ✨ Features
 
-- 🌐 **实时多人** — Socket.io WebSocket，低延迟实时同步
-- 🎯 **10大题库** — 动物、美食、影视、名人、国家、运动、品牌、职业、奇幻、日常物品，每类30个词条
-- 🖼️ **双显示模式** — 表情图片模式 or 文字模式
-- 🎤 **语音输入** — 支持浏览器语音识别（Chrome/Edge）
-- ❤️ **生命系统** — 可配置1/2/3/5条命
-- ⏱️ **回合计时** — 可配置30/60/90/120秒限时
-- 🎨 **丝滑UI** — 玻璃拟态 + 霓虹特效 + Framer Motion动画
-- 🏆 **积分排行** — 实时积分 + 游戏结束颁奖典礼
+- 🌐 **Real-time multiplayer** — Socket.io WebSocket, low-latency state sync
+- 🎯 **10 categories** — Animals, Food, Movies, Celebrities, Countries, Sports, Brands, Occupations, Fantasy, Everyday Objects (30 items each)
+- 🖼️ **Two display modes** — emoji/image mode or text-only mode
+- 🎤 **Voice input** — hold the mic button and speak (Chrome / Edge)
+- ❤️ **Lives system** — configurable 1 / 2 / 3 / 5 lives
+- ⏱️ **Turn timer** — configurable 30 / 60 / 90 / 120-second limit
+- 🎨 **Polished UI** — glassmorphism, neon glow effects, Framer Motion animations
+- 🏆 **Live scoreboard** — real-time scores + end-game awards ceremony
 
-## 🏗️ 技术架构
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 · TypeScript · Vite · Tailwind CSS · Framer Motion |
+| Backend | Node.js · Express · Socket.io |
+| Deploy (frontend) | GitHub Pages via GitHub Actions |
+| Deploy (backend) | Railway (free tier) |
 
 ```
 headgame/
-├── client/          # React 18 + TypeScript + Vite + Tailwind CSS
+├── client/
 │   └── src/
-│       ├── pages/   # 首页、大厅、游戏、结算
-│       ├── hooks/   # useSocket, useSpeech
-│       └── types/   # 共享类型定义
-└── server/          # Node.js + Express + Socket.io
+│       ├── pages/          # Home, Lobby, Game, Results
+│       ├── hooks/          # useSocket, useSpeech
+│       └── types/          # Shared type definitions
+└── server/
     └── src/
-        ├── GameManager.ts  # 游戏状态管理
-        ├── categories.ts   # 题库数据
-        └── index.ts        # Socket事件处理
+        ├── GameManager.ts  # Core game state machine
+        ├── categories.ts   # All category data
+        └── index.ts        # Socket event handlers
 ```
 
-## 🚀 本地运行
+## 🚀 Local Development
 
-### 前置需求
-- Node.js 18+
-- npm 9+
-
-### 启动步骤
+**Requirements:** Node.js 18+
 
 ```bash
-# 1. 克隆仓库
+# 1. Clone the repo
 git clone https://github.com/xzhangfox/headgame.git
 cd headgame
 
-# 2. 安装服务端依赖
-cd server && npm install && cd ..
+# 2. Install & start the server (terminal 1)
+cd server && npm install && npm run dev
+# → http://localhost:3001
 
-# 3. 安装客户端依赖
-cd client && npm install && cd ..
-
-# 4. 启动服务端（终端1）
-cd server && npm run dev
-# 服务端运行在 http://localhost:3001
-
-# 5. 启动客户端（终端2）
-cd client && npm run dev
-# 游戏运行在 http://localhost:5173
+# 3. Install & start the client (terminal 2)
+cd client && npm install && npm run dev
+# → http://localhost:5173
 ```
 
-## 📦 部署到 GitHub
+## 📦 Deployment
 
-### 前端 → GitHub Pages
+### Frontend → GitHub Pages
 
-1. **Push 到 GitHub**
+1. **Push to GitHub**
    ```bash
    git remote add origin https://github.com/xzhangfox/headgame.git
    git push -u origin main
    ```
 
-2. **开启 GitHub Pages**
-   - 仓库 → Settings → Pages → Source: **GitHub Actions**
+2. **Enable GitHub Pages**
+   Repository → Settings → Pages → Source: **GitHub Actions**
 
-3. **配置 Secret**（可选，如果有独立服务端）
-   - 仓库 → Settings → Secrets → `VITE_SERVER_URL` = `https://your-server.railway.app`
+3. **Add secret** (if you have a separate backend)
+   Repository → Settings → Secrets → New: `VITE_SERVER_URL` = `https://your-server.railway.app`
 
-4. **自动部署** — 每次 push 到 main 分支时自动构建并部署
+4. Every push to `main` triggers an automatic build and deploy to:
+   `https://xzhangfox.github.io/headgame/`
 
-### 后端 → Railway（免费）
+### Backend → Railway (free)
 
-1. 访问 [railway.app](https://railway.app)，用 GitHub 登录
-2. New Project → Deploy from GitHub repo → 选择此仓库
-3. 配置根目录为 `server`，Railway 会自动检测并运行
-4. 获取部署 URL，填入前端的 `VITE_SERVER_URL` Secret
+1. Sign in to [railway.app](https://railway.app) with GitHub
+2. **New Project** → Deploy from GitHub repo → select this repo
+3. Set the root directory to `server` — Railway auto-detects and runs it
+4. Copy the generated URL and add it as the `VITE_SERVER_URL` secret above
 
-### 环境变量
+### Environment Variables
 
-**服务端**（Railway 配置）：
+**Server** (set in Railway dashboard):
 ```
 PORT=3001
 CLIENT_ORIGIN=https://xzhangfox.github.io
 ```
 
-**客户端**（GitHub Secret 或 `.env.local`）：
+**Client** (GitHub Secret or local `.env.local`):
 ```
 VITE_SERVER_URL=https://your-server.railway.app
 VITE_BASE_URL=/headgame/
 ```
 
-## 🎲 Socket.io 事件
+## 🔌 Socket.io API
 
-| 客户端发送 | 说明 |
+| Client → Server | Description |
 |---|---|
-| `create_room` | 创建房间 |
-| `join_room` | 加入房间 |
-| `start_game` | 开始游戏（仅房主）|
-| `send_message` | 发送问题/回答 |
-| `make_guess` | 猜测头顶内容 |
-| `end_turn` | 结束当前回合 |
-| `update_settings` | 更新设置（仅房主）|
+| `create_room` | Create a new room |
+| `join_room` | Join by room code |
+| `start_game` | Start the game (host only) |
+| `update_settings` | Update game settings (host only) |
+| `send_message` | Send a question or answer |
+| `make_guess` | Submit a guess for your own head item |
+| `end_turn` | End your current turn |
 
-| 服务端广播 | 说明 |
+| Server → Client | Description |
 |---|---|
-| `room_updated` | 房间状态变更 |
+| `room_updated` | Full room state broadcast |
 
 ## 📝 License
 
