@@ -83,7 +83,7 @@ cd client && npm install && npm run dev
    Repository → Settings → Pages → Source: **GitHub Actions**
 
 3. **Add secret** (if you have a separate backend)
-   Repository → Settings → Secrets → New: `VITE_SERVER_URL` = `https://your-server.railway.app`
+   Repository → Settings → Secrets → New: `VITE_SERVER_URL` = `https://headgame-server-production.up.railway.app`
 
 4. Every push to `main` triggers an automatic build and deploy to:
    `https://xzhangfox.github.io/headgame/`
@@ -93,7 +93,7 @@ cd client && npm install && npm run dev
 1. Sign in to [railway.app](https://railway.app) with GitHub
 2. **New Project** → Deploy from GitHub repo → select this repo
 3. Set the root directory to `server` — Railway auto-detects and runs it
-4. Copy the generated URL and add it as the `VITE_SERVER_URL` secret above
+4. Copy the generated URL (e.g. `https://headgame-server-production.up.railway.app`) and add it as the `VITE_SERVER_URL` secret above
 
 ### Environment Variables
 
@@ -105,7 +105,7 @@ CLIENT_ORIGIN=https://xzhangfox.github.io
 
 **Client** (GitHub Secret or local `.env.local`):
 ```
-VITE_SERVER_URL=https://your-server.railway.app
+VITE_SERVER_URL=https://headgame-server-production.up.railway.app
 VITE_BASE_URL=/headgame/
 ```
 
