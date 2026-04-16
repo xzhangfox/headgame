@@ -21,7 +21,6 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || loading || !isConnected) return;
-
     setLoading(true);
     try {
       if (tab === 'create') {
@@ -38,7 +37,8 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo & Title */}
+
+        {/* Logo */}
         <motion.div
           className="text-center mb-8"
           initial={{ opacity: 0, y: -30 }}
@@ -53,36 +53,36 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
             🎭
           </motion.div>
           <h1 className="text-5xl font-black text-white mb-2 tracking-tight">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 via-neon-pink to-neon-cyan">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-neon-gold to-gold-400">
               HEAD
             </span>
             <span className="text-white">GAME</span>
           </h1>
-          <p className="text-white/60 text-lg">猜猜你头顶上是什么？</p>
-          <div className="flex justify-center gap-6 mt-3 text-sm text-white/40">
+          <p className="text-white/50 text-lg">猜猜你头顶上是什么？</p>
+          <div className="flex justify-center gap-6 mt-3 text-sm text-white/30">
             <span>👥 2-8人</span>
             <span>🎯 多题库</span>
             <span>🎤 语音输入</span>
           </div>
         </motion.div>
 
-        {/* Main card */}
+        {/* Card */}
         <motion.div
           className="glass neon-border p-6 rounded-2xl"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          {/* Tab switcher */}
-          <div className="flex bg-white/5 rounded-xl p-1 mb-6">
+          {/* Tabs */}
+          <div className="flex bg-black/30 rounded-xl p-1 mb-6">
             {(['create', 'join'] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   tab === t
-                    ? 'bg-brand-600 text-white shadow-glow'
-                    : 'text-white/50 hover:text-white/80'
+                    ? 'bg-gradient-to-r from-gold-600 to-gold-400 text-black shadow-glow'
+                    : 'text-white/40 hover:text-white/70'
                 }`}
               >
                 {t === 'create' ? '🚀 创建房间' : '🔗 加入房间'}
@@ -91,9 +91,9 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Avatar picker */}
+            {/* Avatar */}
             <div>
-              <label className="text-sm text-white/60 mb-2 block">选择头像</label>
+              <label className="text-sm text-white/50 mb-2 block">选择头像</label>
               <div className="grid grid-cols-10 gap-1.5">
                 {AVATARS.map((av) => (
                   <button
@@ -102,7 +102,7 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
                     onClick={() => setAvatar(av)}
                     className={`text-2xl w-9 h-9 rounded-lg transition-all duration-150 flex items-center justify-center ${
                       avatar === av
-                        ? 'bg-brand-600/70 scale-110 shadow-glow ring-2 ring-brand-400'
+                        ? 'bg-gold-600/40 scale-110 shadow-glow ring-2 ring-gold-400'
                         : 'bg-white/5 hover:bg-white/10 hover:scale-105'
                     }`}
                   >
@@ -112,9 +112,9 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
               </div>
             </div>
 
-            {/* Name input */}
+            {/* Name */}
             <div>
-              <label className="text-sm text-white/60 mb-1.5 block">你的昵称</label>
+              <label className="text-sm text-white/50 mb-1.5 block">你的昵称</label>
               <input
                 type="text"
                 value={name}
@@ -126,7 +126,7 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
               />
             </div>
 
-            {/* Room code input (join mode) */}
+            {/* Room code */}
             <AnimatePresence>
               {tab === 'join' && (
                 <motion.div
@@ -135,7 +135,7 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <label className="text-sm text-white/60 mb-1.5 block">房间码</label>
+                  <label className="text-sm text-white/50 mb-1.5 block">房间码</label>
                   <input
                     type="text"
                     value={roomCode}
@@ -149,7 +149,7 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
               )}
             </AnimatePresence>
 
-            {/* Submit button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading || !isConnected || !name.trim() || (tab === 'join' && !roomCode.trim())}
@@ -163,16 +163,12 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
                   </svg>
                   处理中...
                 </span>
-              ) : tab === 'create' ? (
-                '🎮 创建房间'
-              ) : (
-                '🚀 加入游戏'
-              )}
+              ) : tab === 'create' ? '🎮 创建房间' : '🚀 加入游戏'}
             </button>
           </form>
 
           {!isConnected && (
-            <p className="text-center text-red-400/80 text-xs mt-3">正在连接服务器...</p>
+            <p className="text-center text-red-400/70 text-xs mt-3">正在连接服务器...</p>
           )}
         </motion.div>
 
@@ -183,8 +179,8 @@ export default function HomePage({ onCreateRoom, onJoinRoom, isConnected }: Prop
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="text-sm font-semibold text-white/70 mb-2">📖 玩法简介</h3>
-          <ul className="text-xs text-white/40 space-y-1">
+          <h3 className="text-sm font-semibold text-gold-400/80 mb-2">📖 玩法简介</h3>
+          <ul className="text-xs text-white/35 space-y-1">
             <li>🎭 每位玩家头顶有一张别人能看到、自己看不到的卡片</li>
             <li>💬 轮流向其他玩家提问来获取线索（只能答是/否）</li>
             <li>💡 随时可以猜测自己头顶内容，猜错扣命</li>

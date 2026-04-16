@@ -146,9 +146,9 @@ export default function App() {
     <div className="min-h-screen bg-game-gradient bg-grid bg-stars relative overflow-hidden">
       {/* Background ambient glow */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-700/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-neon-pink/10 rounded-full blur-3xl" />
-        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-neon-cyan/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-800/15 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gold-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-neon-amber/8 rounded-full blur-3xl" />
       </div>
 
       {/* Connection status */}

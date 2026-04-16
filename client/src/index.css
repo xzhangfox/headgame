@@ -16,31 +16,31 @@ html, body, #root {
 
 body {
   font-family: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
-  background: #0f0c29;
+  background: #080600;
   color: #fff;
   overflow-x: hidden;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 2px; }
-::-webkit-scrollbar-thumb { background: rgba(124,34,255,0.5); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(124,34,255,0.8); }
+::-webkit-scrollbar-track { background: rgba(255,210,0,0.04); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.4); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.7); }
 
-/* Glass morphism card */
+/* Glassmorphism card — warm gold tint */
 .glass {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 210, 0, 0.04);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.18);
   border-radius: 16px;
 }
 
 .glass-dark {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.1);
   border-radius: 16px;
 }
 
@@ -49,102 +49,85 @@ body {
   text-shadow: 0 0 20px currentColor;
 }
 
-/* Neon border */
+/* Neon borders */
 .neon-border {
-  border: 1px solid rgba(124, 34, 255, 0.6);
-  box-shadow: 0 0 15px rgba(124, 34, 255, 0.3), inset 0 0 15px rgba(124, 34, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 0 16px rgba(212,175,55,0.25), inset 0 0 16px rgba(212,175,55,0.04);
 }
 
-.neon-border-pink {
-  border: 1px solid rgba(255, 45, 120, 0.6);
-  box-shadow: 0 0 15px rgba(255, 45, 120, 0.3), inset 0 0 15px rgba(255, 45, 120, 0.05);
+.neon-border-amber {
+  border: 1px solid rgba(255, 153, 0, 0.55);
+  box-shadow: 0 0 16px rgba(255,153,0,0.25);
 }
 
-.neon-border-cyan {
-  border: 1px solid rgba(0, 229, 255, 0.6);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
-}
-
-/* Background grid pattern */
+/* Background grid — subtle gold tint */
 .bg-grid {
   background-image:
-    linear-gradient(rgba(124, 34, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 34, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(212,175,55,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212,175,55,0.04) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
-/* Particle/star effect on background */
 .bg-stars {
-  background-image: radial-gradient(ellipse at top, #1a0533 0%, #0f0c29 70%);
+  background-image: radial-gradient(ellipse at top, #110e00 0%, #080600 70%);
 }
 
-/* Input styles */
+/* Inputs */
 .game-input {
-  @apply w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-400 focus:bg-white/10 transition-all duration-200;
+  @apply w-full bg-white/5 border border-gold-700/40 rounded-xl px-4 py-3 text-white placeholder-white/30
+         focus:outline-none focus:border-gold-400 focus:bg-gold-900/20 transition-all duration-200;
 }
 
-/* Button base */
+/* Buttons */
 .btn {
   @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl px-5 py-2.5 transition-all duration-200 cursor-pointer select-none;
 }
-.btn:disabled {
-  @apply opacity-40 cursor-not-allowed;
-}
+.btn:disabled { @apply opacity-40 cursor-not-allowed; }
 
 .btn-primary {
-  @apply btn bg-gradient-to-r from-brand-600 to-brand-400 text-white shadow-glow hover:shadow-lg hover:scale-105 active:scale-95;
+  @apply btn text-black font-bold shadow-glow hover:shadow-glow-lg hover:scale-105 active:scale-95;
+  background: linear-gradient(135deg, #ffd700 0%, #e6ac00 60%, #c79100 100%);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #ffe566 0%, #ffd700 60%, #e6ac00 100%);
 }
 
 .btn-secondary {
-  @apply btn bg-white/10 text-white border border-white/20 hover:bg-white/20 active:scale-95;
+  @apply btn bg-white/10 text-white/80 border border-gold-700/30 hover:bg-gold-900/30 hover:border-gold-500/50 hover:text-white active:scale-95;
 }
 
 .btn-danger {
-  @apply btn bg-gradient-to-r from-red-700 to-red-500 text-white hover:scale-105 active:scale-95;
+  @apply btn bg-gradient-to-r from-red-800 to-red-600 text-white hover:scale-105 active:scale-95;
 }
 
 .btn-success {
-  @apply btn bg-gradient-to-r from-green-700 to-green-500 text-white hover:scale-105 active:scale-95;
+  @apply btn bg-gradient-to-r from-green-800 to-green-600 text-white hover:scale-105 active:scale-95;
 }
 
-/* Avatar */
-.avatar-ring {
-  @apply rounded-full border-2 border-brand-400 p-0.5;
-  box-shadow: 0 0 12px rgba(124,34,255,0.5);
-}
-
-/* Current turn glow */
+/* Current-turn glow — gold pulse */
 .current-turn-glow {
   animation: currentTurnPulse 1.5s ease-in-out infinite;
 }
 
 @keyframes currentTurnPulse {
-  0%, 100% { box-shadow: 0 0 15px rgba(255, 230, 0, 0.4), 0 0 30px rgba(255, 230, 0, 0.1); border-color: rgba(255, 230, 0, 0.6); }
-  50% { box-shadow: 0 0 30px rgba(255, 230, 0, 0.8), 0 0 60px rgba(255, 230, 0, 0.3); border-color: rgba(255, 230, 0, 1); }
+  0%,100% {
+    box-shadow: 0 0 14px rgba(212,175,55,0.4), 0 0 28px rgba(212,175,55,0.1);
+    border-color: rgba(212,175,55,0.55);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.3);
+    border-color: rgba(255,215,0,1);
+  }
 }
 
-/* Message animations */
-.message-enter {
-  animation: messageEnter 0.3s ease-out forwards;
-}
-
+/* Message enter */
 @keyframes messageEnter {
   from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Sparkle animation */
-@keyframes sparkle {
-  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1) rotate(180deg); }
-}
-
-.sparkle {
-  animation: sparkle 0.8s ease-in-out infinite;
-}
-
-/* Confetti animation */
+/* Confetti */
 @keyframes confettiFall {
-  0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  0%   { transform: translateY(-100px) rotate(0deg);   opacity: 1; }
+  100% { transform: translateY(100vh)  rotate(720deg); opacity: 0; }
 }

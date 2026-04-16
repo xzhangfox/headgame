@@ -12,9 +12,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       toastOptions={{
         duration: 3000,
         style: {
-          background: 'rgba(26, 5, 51, 0.95)',
+          background: 'rgba(10, 8, 0, 0.95)',
           color: '#fff',
-          border: '1px solid rgba(124, 34, 255, 0.5)',
+          border: '1px solid rgba(212, 175, 55, 0.4)',
           backdropFilter: 'blur(20px)',
           borderRadius: '12px',
           fontFamily: 'Noto Sans SC, sans-serif',
