@@ -1,10 +1,12 @@
+import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import type { Room, Player, ChatMessage, GameSettings, GameState } from './types';
+import type { Room, Player, ChatMessage, GameSettings } from './types';
 import { getUniqueItems, CATEGORIES } from './categories';
 
 const ROOM_CODE_LENGTH = 6;
 const MAX_LIVES = 3;
 const DEFAULT_TURN_TIME = 60;
+const DISCONNECT_TIMEOUT_MS = 60_000; // 1 minute
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -15,28 +17,27 @@ function generateRoomCode(): string {
   return code;
 }
 
-function makeSerializable(room: Room): Omit<Room, 'turnTimerId'> {
+function omitTimer(room: Room): Omit<Room, 'turnTimerId'> {
   const { turnTimerId: _t, ...rest } = room;
   return rest;
 }
 
-export class GameManager {
+export class GameManager extends EventEmitter {
   private rooms = new Map<string, Room>();
-  private playerRooms = new Map<string, string>(); // socketId -> roomId
+  private playerRooms = new Map<string, string>();          // socketId → roomId
+  private disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>(); // playerId → timer
 
-  // -- Room management --
+  // ── Room management ────────────────────────────────────────────────────────
 
   createRoom(hostId: string, hostName: string, hostAvatar: string): Room {
     let code: string;
-    do {
-      code = generateRoomCode();
-    } while (this.getRoomByCode(code));
+    do { code = generateRoomCode(); } while (this.getRoomByCode(code));
 
     const room: Room = {
       id: uuidv4(),
       code,
       hostId,
-      players: [this.createPlayer(hostId, hostName, hostAvatar)],
+      players: [this.makePlayer(hostId, hostName, hostAvatar)],
       state: 'lobby',
       currentTurnPlayerId: null,
       turnNumber: 0,
@@ -60,10 +61,7 @@ export class GameManager {
   }
 
   joinRoom(
-    roomCode: string,
-    playerId: string,
-    playerName: string,
-    playerAvatar: string
+    roomCode: string, playerId: string, playerName: string, playerAvatar: string
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.getRoomByCode(roomCode);
     if (!room) return { success: false, error: '房间不存在，请检查房间码' };
@@ -73,18 +71,19 @@ export class GameManager {
       return { success: false, error: '该昵称已被使用，请换一个' };
     }
 
-    const player = this.createPlayer(playerId, playerName, playerAvatar);
-    room.players.push(player);
+    room.players.push(this.makePlayer(playerId, playerName, playerAvatar));
     this.playerRooms.set(playerId, room.id);
-
-    this.addSystemMessage(room, `${playerName} 加入了游戏 ${playerAvatar}`);
+    this.addSys(room, `${playerName} 加入了游戏 ${playerAvatar}`);
     return { success: true, room };
   }
 
+  /** Intentional leave — immediately removes the player. */
   leaveRoom(playerId: string): { room?: Room; wasHost: boolean; roomEmpty: boolean } {
+    // Cancel any pending disconnect timer first
+    this.cancelDisconnectTimer(playerId);
+
     const roomId = this.playerRooms.get(playerId);
     if (!roomId) return { wasHost: false, roomEmpty: false };
-
     const room = this.rooms.get(roomId);
     if (!room) return { wasHost: false, roomEmpty: false };
 
@@ -100,56 +99,74 @@ export class GameManager {
       return { wasHost, roomEmpty: true };
     }
 
-    // Transfer host if needed
     if (wasHost) {
       room.hostId = room.players[0].id;
-      this.addSystemMessage(room, `${room.players[0].name} 成为了新房主`);
+      this.addSys(room, `${room.players[0].name} 成为了新房主`);
     }
-
-    if (player) {
-      this.addSystemMessage(room, `${player.name} 离开了游戏`);
-    }
-
-    // If game in progress and this player had the turn, advance
-    if (room.state === 'playing' && room.currentTurnPlayerId === playerId) {
-      this.advanceTurn(room);
-    }
+    if (player) this.addSys(room, `${player.name} 离开了游戏`);
+    if (room.state === 'playing' && room.currentTurnPlayerId === playerId) this.advanceTurn(room);
 
     return { room, wasHost, roomEmpty: false };
   }
 
+  /** Called on socket disconnect — starts the 60-second eviction timer. */
   playerDisconnect(playerId: string): Room | null {
-    const roomId = this.playerRooms.get(playerId);
-    if (!roomId) return null;
-    const room = this.rooms.get(roomId);
+    const room = this.getRoomByPlayerId(playerId);
     if (!room) return null;
 
     const player = room.players.find(p => p.id === playerId);
-    if (player) {
-      player.isConnected = false;
-    }
+    if (!player || !player.isConnected) return null;
+
+    player.isConnected = false;
+    this.addSys(room, `${player.name} 断开了连接，60秒内可重新加入…`);
+
+    const timer = setTimeout(() => {
+      this.disconnectTimers.delete(playerId);
+      this.evictPlayer(playerId);
+    }, DISCONNECT_TIMEOUT_MS);
+
+    this.disconnectTimers.set(playerId, timer);
     return room;
   }
 
-  playerReconnect(playerId: string): Room | null {
-    const roomId = this.playerRooms.get(playerId);
-    if (!roomId) return null;
-    const room = this.rooms.get(roomId);
-    if (!room) return null;
+  /** Called when a client reconnects with stored session data. */
+  reconnectPlayer(
+    roomCode: string, newSocketId: string, playerName: string
+  ): { success: boolean; room?: Room; error?: string } {
+    const room = this.getRoomByCode(roomCode);
+    if (!room) return { success: false, error: '房间不存在或已解散' };
 
-    const player = room.players.find(p => p.id === playerId);
-    if (player) {
-      player.isConnected = true;
+    // Find the disconnected player by name
+    const player = room.players.find(p => p.name === playerName && !p.isConnected);
+    if (!player) {
+      // Maybe they're still connected (two tabs) — treat as rejoin
+      const connected = room.players.find(p => p.name === playerName && p.isConnected);
+      if (connected) return { success: false, error: '该账号仍在线，请勿重复登录' };
+      return { success: false, error: '无法重新加入，可能已超时退出' };
     }
-    return room;
+
+    const oldId = player.id;
+
+    // Cancel eviction timer
+    this.cancelDisconnectTimer(oldId);
+
+    // Re-map socket ID
+    player.id = newSocketId;
+    player.isConnected = true;
+    if (room.hostId === oldId) room.hostId = newSocketId;
+    if (room.currentTurnPlayerId === oldId) room.currentTurnPlayerId = newSocketId;
+
+    this.playerRooms.delete(oldId);
+    this.playerRooms.set(newSocketId, room.id);
+
+    this.addSys(room, `${playerName} 重新回到了游戏 ${player.avatar}`);
+    return { success: true, room };
   }
 
-  // -- Game flow --
+  // ── Game flow ───────────────────────────────────────────────────────────────
 
   startGame(
-    roomId: string,
-    hostId: string,
-    settings: GameSettings
+    roomId: string, hostId: string, settings: GameSettings
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: '房间不存在' };
@@ -158,8 +175,6 @@ export class GameManager {
     if (room.state !== 'lobby') return { success: false, error: '游戏已经在进行中' };
 
     room.settings = settings;
-
-    // Assign items to players
     const items = getUniqueItems(settings.category, room.players.length);
     room.players.forEach((p, i) => {
       const item = items[i % items.length];
@@ -178,40 +193,28 @@ export class GameManager {
     room.turnNumber = 1;
     room.messages = [];
 
-    // First turn: random player
-    const firstPlayer = room.players[Math.floor(Math.random() * room.players.length)];
-    room.currentTurnPlayerId = firstPlayer.id;
+    const first = room.players[Math.floor(Math.random() * room.players.length)];
+    room.currentTurnPlayerId = first.id;
     room.turnStartTime = Date.now();
 
-    this.addSystemMessage(
-      room,
-      `游戏开始！分类：${this.getCategoryName(settings.category)}，模式：${settings.mode === 'emoji' ? '表情图片' : '文字'}。${firstPlayer.name} 先行！`
+    this.addSys(room,
+      `游戏开始！分类：${this.catName(settings.category)}，模式：${settings.mode === 'emoji' ? '表情图片' : '文字'}。${first.name} 先行！`
     );
-
     return { success: true, room };
   }
 
   sendMessage(
-    roomId: string,
-    playerId: string,
-    content: string,
-    targetPlayerId?: string,
-    type: 'question' | 'answer' = 'question'
+    roomId: string, playerId: string, content: string,
+    targetPlayerId?: string, type: 'question' | 'answer' = 'question'
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: '房间不存在' };
     if (room.state !== 'playing') return { success: false, error: '游戏未开始' };
-
     const player = room.players.find(p => p.id === playerId);
     if (!player) return { success: false, error: '玩家不存在' };
 
-    let targetPlayerName: string | undefined;
-    if (targetPlayerId) {
-      const target = room.players.find(p => p.id === targetPlayerId);
-      targetPlayerName = target?.name;
-    }
-
-    const msg: ChatMessage = {
+    const target = targetPlayerId ? room.players.find(p => p.id === targetPlayerId) : undefined;
+    room.messages.push({
       id: uuidv4(),
       playerId,
       playerName: player.name,
@@ -220,96 +223,61 @@ export class GameManager {
       type,
       timestamp: Date.now(),
       targetPlayerId,
-      targetPlayerName,
-    };
-    room.messages.push(msg);
-
-    // If sending a question, advance turn (only current turn player sends questions)
-    if (type === 'question' && room.currentTurnPlayerId === playerId) {
-      // Don't auto-advance; let the player decide when to end turn or guess
-    }
-
+      targetPlayerName: target?.name,
+    });
     return { success: true, room };
   }
 
   makeGuess(
-    roomId: string,
-    playerId: string,
-    guess: string
+    roomId: string, playerId: string, guess: string
   ): { success: boolean; correct?: boolean; room?: Room; error?: string; gameOver?: boolean } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: '房间不存在' };
     if (room.state !== 'playing') return { success: false, error: '游戏未开始' };
-
     const player = room.players.find(p => p.id === playerId);
     if (!player) return { success: false, error: '玩家不存在' };
     if (player.hasGuessed) return { success: false, error: '你已经猜对了！' };
     if (player.lives <= 0) return { success: false, error: '你的生命值已用完' };
 
-    const isCorrect =
+    const correct =
       guess.trim().toLowerCase() === player.headItem?.toLowerCase() ||
       guess.trim() === player.headEmoji;
 
-    if (isCorrect) {
+    if (correct) {
       room.guessedCount++;
       player.hasGuessed = true;
       player.guessRank = room.guessedCount;
-
-      // Score: 100 for 1st, -15 per rank. Min 10.
-      const baseScore = Math.max(10, 100 - (room.guessedCount - 1) * 15);
-      // Time bonus: up to +20 based on how fast in the game
-      const elapsed = (Date.now() - (room.startTime || Date.now())) / 1000;
-      const timeBonus = Math.max(0, Math.floor(20 - elapsed / 10));
-      player.score += baseScore + timeBonus;
-
-      const msg: ChatMessage = {
-        id: uuidv4(),
-        playerId,
-        playerName: player.name,
-        playerAvatar: player.avatar,
-        content: `猜对了！我头顶上是【${player.headItem} ${player.headEmoji}】！+${baseScore + timeBonus}分`,
-        type: 'guess_success',
-        timestamp: Date.now(),
-      };
-      room.messages.push(msg);
+      const base = Math.max(10, 100 - (room.guessedCount - 1) * 15);
+      const bonus = Math.max(0, Math.floor(20 - (Date.now() - (room.startTime || Date.now())) / 10000));
+      player.score += base + bonus;
+      room.messages.push({
+        id: uuidv4(), playerId, playerName: player.name, playerAvatar: player.avatar,
+        content: `猜对了！我头顶上是【${player.headItem} ${player.headEmoji}】！+${base + bonus}分`,
+        type: 'guess_success', timestamp: Date.now(),
+      });
     } else {
       player.lives--;
       player.wrongGuesses++;
       player.score = Math.max(0, player.score - 10);
-
-      const msg: ChatMessage = {
-        id: uuidv4(),
-        playerId,
-        playerName: player.name,
-        playerAvatar: player.avatar,
+      room.messages.push({
+        id: uuidv4(), playerId, playerName: player.name, playerAvatar: player.avatar,
         content: `猜错了："${guess}"，还剩 ${player.lives} 条命。(-10分)`,
-        type: 'guess_fail',
-        timestamp: Date.now(),
-      };
-      room.messages.push(msg);
-
+        type: 'guess_fail', timestamp: Date.now(),
+      });
       if (player.lives <= 0) {
-        player.hasGuessed = true; // eliminated
+        player.hasGuessed = true;
         room.guessedCount++;
-        this.addSystemMessage(room, `${player.name} 生命值耗尽，已淘汰！头顶是【${player.headItem} ${player.headEmoji}】`);
+        this.addSys(room, `${player.name} 生命值耗尽，已淘汰！头顶是【${player.headItem} ${player.headEmoji}】`);
       }
     }
 
-    // Check if game is over
-    const activePlayers = room.players.filter(p => p.lives > 0 || p.hasGuessed);
     const allDone = room.players.every(p => p.hasGuessed || p.lives <= 0);
-
     if (allDone) {
       this.endGame(room);
-      return { success: true, correct: isCorrect, room, gameOver: true };
+      return { success: true, correct, room, gameOver: true };
     }
-
-    // If current turn player just guessed correctly, advance turn
-    if (room.currentTurnPlayerId === playerId) {
-      this.advanceTurn(room);
-    }
-
-    return { success: true, correct: isCorrect, room, gameOver: false };
+    if (room.currentTurnPlayerId === playerId) this.advanceTurn(room);
+    return { success: true, correct, room, gameOver: false };
   }
 
   endTurn(roomId: string, playerId: string): { success: boolean; room?: Room; error?: string } {
@@ -320,100 +288,118 @@ export class GameManager {
     return { success: true, room };
   }
 
-  // -- Internal helpers --
+  // ── Internal helpers ────────────────────────────────────────────────────────
 
-  private advanceTurn(room: Room): void {
-    if (room.state !== 'playing') return;
+  /** Remove a player after the disconnect timer fires. */
+  private evictPlayer(playerId: string): void {
+    const roomId = this.playerRooms.get(playerId);
+    if (!roomId) return;
+    const room = this.rooms.get(roomId);
+    if (!room) return;
 
-    const activePlayers = room.players.filter(p => !p.hasGuessed && p.lives > 0);
-    if (activePlayers.length === 0) {
-      this.endGame(room);
+    const player = room.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    // If player somehow reconnected already (race condition), don't evict
+    if (player.isConnected) return;
+
+    this.addSys(room, `${player.name} 超时未回，已退出房间`);
+    room.players = room.players.filter(p => p.id !== playerId);
+    this.playerRooms.delete(playerId);
+
+    if (room.players.length === 0) {
+      if (room.turnTimerId) clearTimeout(room.turnTimerId);
+      this.rooms.delete(roomId);
+      this.emit('room_destroyed', roomId);
       return;
     }
 
-    room.turnNumber++;
-
-    // Find next player in order
-    const currentIdx = room.players.findIndex(p => p.id === room.currentTurnPlayerId);
-    let nextIdx = (currentIdx + 1) % room.players.length;
-    let tries = 0;
-    while (
-      (room.players[nextIdx].hasGuessed || room.players[nextIdx].lives <= 0) &&
-      tries < room.players.length
-    ) {
-      nextIdx = (nextIdx + 1) % room.players.length;
-      tries++;
+    if (room.hostId === playerId) {
+      room.hostId = room.players[0].id;
+      this.addSys(room, `${room.players[0].name} 成为了新房主`);
+    }
+    if (room.state === 'playing' && room.currentTurnPlayerId === playerId) {
+      this.advanceTurn(room);
     }
 
-    room.currentTurnPlayerId = room.players[nextIdx].id;
-    room.turnStartTime = Date.now();
+    // Check if game should end (all remaining players done)
+    if (room.state === 'playing') {
+      const allDone = room.players.every(p => p.hasGuessed || p.lives <= 0);
+      if (allDone) this.endGame(room);
+    }
 
-    this.addSystemMessage(room, `第 ${room.turnNumber} 轮 — 轮到 ${room.players[nextIdx].name} 提问了！`);
+    this.emit('room_updated', room);
+  }
+
+  private cancelDisconnectTimer(playerId: string): void {
+    const t = this.disconnectTimers.get(playerId);
+    if (t) {
+      clearTimeout(t);
+      this.disconnectTimers.delete(playerId);
+    }
+  }
+
+  private advanceTurn(room: Room): void {
+    if (room.state !== 'playing') return;
+    const active = room.players.filter(p => !p.hasGuessed && p.lives > 0);
+    if (active.length === 0) { this.endGame(room); return; }
+
+    room.turnNumber++;
+    let idx = room.players.findIndex(p => p.id === room.currentTurnPlayerId);
+    let tries = 0;
+    do {
+      idx = (idx + 1) % room.players.length;
+      tries++;
+    } while ((room.players[idx].hasGuessed || room.players[idx].lives <= 0) && tries < room.players.length);
+
+    room.currentTurnPlayerId = room.players[idx].id;
+    room.turnStartTime = Date.now();
+    this.addSys(room, `第 ${room.turnNumber} 轮 — 轮到 ${room.players[idx].name} 提问了！`);
   }
 
   private endGame(room: Room): void {
-    if (room.turnTimerId) {
-      clearTimeout(room.turnTimerId);
-      room.turnTimerId = null;
-    }
+    if (room.turnTimerId) { clearTimeout(room.turnTimerId); room.turnTimerId = null; }
     room.state = 'finished';
     room.currentTurnPlayerId = null;
-
-    // Sort players by score for final announcement
-    const sorted = [...room.players].sort((a, b) => b.score - a.score);
-    const winner = sorted[0];
-    this.addSystemMessage(room, `🎉 游戏结束！冠军是 ${winner.name}，得分：${winner.score}！`);
+    const winner = [...room.players].sort((a, b) => b.score - a.score)[0];
+    this.addSys(room, `🎉 游戏结束！冠军是 ${winner.name}，得分：${winner.score}！`);
   }
 
-  private createPlayer(id: string, name: string, avatar: string): Player {
+  private makePlayer(id: string, name: string, avatar: string): Player {
     return {
-      id,
-      name,
-      avatar,
-      headItem: null,
-      headEmoji: null,
-      score: 0,
-      lives: MAX_LIVES,
-      hasGuessed: false,
-      guessRank: null,
-      isConnected: true,
-      isReady: false,
-      wrongGuesses: 0,
+      id, name, avatar,
+      headItem: null, headEmoji: null,
+      score: 0, lives: MAX_LIVES,
+      hasGuessed: false, guessRank: null,
+      isConnected: true, isReady: false, wrongGuesses: 0,
     };
   }
 
-  private addSystemMessage(room: Room, content: string): void {
+  private addSys(room: Room, content: string): void {
     room.messages.push({
-      id: uuidv4(),
-      playerId: 'system',
-      playerName: '系统',
-      playerAvatar: '🎮',
-      content,
-      type: 'system',
-      timestamp: Date.now(),
+      id: uuidv4(), playerId: 'system', playerName: '系统', playerAvatar: '🎮',
+      content, type: 'system', timestamp: Date.now(),
     });
   }
 
-  private getCategoryName(categoryId: string): string {
-    return CATEGORIES.find(c => c.id === categoryId)?.name || categoryId;
+  private catName(id: string): string {
+    return CATEGORIES.find(c => c.id === id)?.name || id;
   }
 
-  // -- Getters --
+  // ── Public getters ──────────────────────────────────────────────────────────
 
   getRoomByCode(code: string): Room | undefined {
-    for (const room of this.rooms.values()) {
-      if (room.code === code.toUpperCase()) return room;
+    for (const r of this.rooms.values()) {
+      if (r.code === code.toUpperCase()) return r;
     }
-    return undefined;
   }
 
   getRoomByPlayerId(playerId: string): Room | undefined {
-    const roomId = this.playerRooms.get(playerId);
-    if (!roomId) return undefined;
-    return this.rooms.get(roomId);
+    const id = this.playerRooms.get(playerId);
+    return id ? this.rooms.get(id) : undefined;
   }
 
   getSerializableRoom(room: Room): Omit<Room, 'turnTimerId'> {
-    return makeSerializable(room);
+    return omitTimer(room);
   }
 }
