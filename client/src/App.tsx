@@ -196,22 +196,23 @@ export default function App() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-game-gradient bg-grid bg-stars relative overflow-hidden">
-      {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-800/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gold-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-neon-amber/[0.08] rounded-full blur-3xl" />
+    <div className="min-h-screen relative" style={{ background: '#000' }}>
+      {/* Subtle ambient — very restrained */}
+      <div className="fixed inset-0 pointer-events-none" aria-hidden>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full"
+          style={{ background: 'radial-gradient(ellipse, rgba(212,175,55,0.07) 0%, transparent 70%)' }} />
       </div>
 
-      {/* Connection status */}
-      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5">
-        <div className={`w-2 h-2 rounded-full transition-colors ${
-          reconnecting ? 'bg-gold-400 animate-pulse' :
-          isConnected  ? 'bg-neon-green animate-pulse' : 'bg-red-500'
+      {/* Connection pill */}
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-pill"
+        style={{ background: 'rgba(28,28,30,0.85)', backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(84,84,88,0.4)' }}>
+        <div className={`w-1.5 h-1.5 rounded-full transition-colors ${
+          reconnecting ? 'bg-yellow-400 animate-pulse' :
+          isConnected  ? 'bg-neon-green animate-pulse' : 'bg-neon-red'
         }`} />
-        <span className="text-xs text-white/40">
-          {reconnecting ? '重新连接中…' : isConnected ? '已连接' : '连接中…'}
+        <span className="text-caption" style={{ color: 'rgba(235,235,245,0.45)' }}>
+          {reconnecting ? '重连中…' : isConnected ? '已连接' : '连接中…'}
         </span>
       </div>
 
@@ -219,15 +220,14 @@ export default function App() {
       <AnimatePresence>
         {reconnecting && (
           <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
-            <div className="glass neon-border rounded-2xl px-8 py-6 text-center">
-              <div className="text-4xl mb-3 animate-bounce">🔄</div>
-              <p className="text-white font-semibold">正在重新连接房间…</p>
-              <p className="text-white/40 text-sm mt-1">请稍候</p>
+            <div className="surface-2 shadow-card-lg rounded-card px-10 py-8 text-center">
+              <div className="text-4xl mb-4 animate-bounce">🔄</div>
+              <p className="text-headline text-white font-semibold">正在重新连接房间…</p>
+              <p className="text-footnote mt-1" style={{ color: 'rgba(235,235,245,0.40)' }}>请稍候</p>
             </div>
           </motion.div>
         )}
